@@ -1,0 +1,892 @@
+# 📦 Project: mlm-wallet-app
+
+This is a ready-to-deploy Firebase web app that works from static hosting (GitHub Pages or Firebase Hosting) and uses Firebase Auth, Firestore, Storage, and Cloud Functions for secure server-side logic.
+
+---
+
+## 📁 File Tree
+
+```
+mlm-wallet-app/
+├─ README.md
+├─ index.html
+├─ login.html
+├─ signup.html
+├─ dashboard.html
+├─ profile.html
+├─ admin.html
+├─ transactions.html
+├─ referral.html
+├─ assets/
+│  ├─ logo.svg
+│  └─ placeholder-banner.jpg
+├─ css/
+│  └─ styles.css
+├─ js/
+│  ├─ firebase-init.js
+│  ├─ auth.js
+│  ├─ guard.js
+│  ├─ ui.js
+│  ├─ wallet.js
+│  ├─ admin.js
+│  ├─ referrals.js
+│  └─ uploads.js
+├─ firebase.json               (if using Firebase Hosting)
+├─ firestore.rules
+├─ storage.rules
+├─ firestore.indexes.json
+└─ functions/
+   ├─ package.json
+   └─ index.js
+```
+
+---
+
+## 🔧 README.md
+
+```md
+# MLM Wallet App (Firebase)
+
+Features:
+- Email/Password Auth with Forgot Password
+- Roles via Custom Claims: retailer, distributor, master, admin
+- Virtual Wallet per user (balance + ledger)
+- Wallet to Wallet transfer (secure via Cloud Functions)
+- Admin credit/debit to any user (secure)
+- Transaction History (ledger) with filters
+- Referrals via ?ref=<uid> link; tree stored in Firestore
+- Profile: display name, photo upload, QR code upload
+- Banner creator (simple text-over-image) saved to Storage
+- Basic Dashboard placeholders: recharge, bill payment, AEPS, money transfer (hooks only)
+
+## Quick Start
+1. Create a Firebase project. Enable Auth (Email/Password), Firestore, Storage, and Cloud Functions.
+2. Update `/js/firebase-init.js` with your config (already filled in this template).
+3. Deploy Cloud Functions:
+   ```bash
+   cd functions
+   npm i
+   firebase deploy --only functions
+   ```
+4. Deploy rules:
+   ```bash
+   firebase deploy --only firestore:rules
+   firebase deploy --only storage:rules
+   ```
+5. Host static files on GitHub Pages or Firebase Hosting.
+6. Make yourself admin:
+   - Ask support/admin to run `setCustomClaims` for your uid (use the `makeAdmin` callable once by its allowed uid list).
+   - Or temporarily allow your uid in `functions/index.js` ALLOWLIST.
+
+Security Notes:
+- All wallet mutations happen only in Cloud Functions.
+- Firestore rules prevent client writes to balances/ledger.
+- Use indexes JSON if Firestore prompts you for compound indexes.
+```
+
+---
+
+## 🎨 css/styles.css
+
+```css
+:root { --bg:#0b1220; --card:#121a2b; --ink:#e6e8ee; --muted:#98a2b3; --pri:#3b82f6; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; }
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--ink)}
+a{color:var(--pri);text-decoration:none}
+.container{max-width:1080px;margin:0 auto;padding:24px}
+.card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+.btn{display:inline-flex;gap:8px;align-items:center;padding:10px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#1a2438;color:var(--ink);cursor:pointer}
+.btn.primary{background:var(--pri);color:white;border-color:transparent}
+.btn.ghost{background:transparent}
+.grid{display:grid;gap:16px}
+.grid-2{grid-template-columns:repeat(2,1fr)}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.grid-4{grid-template-columns:repeat(4,1fr)}
+.input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:#101729;color:var(--ink)}
+.label{font-size:12px;color:var(--muted);margin-bottom:6px}
+.kbd{font-family:ui-monospace,Menlo,monospace;font-size:12px;background:#0d1426;border:1px solid rgba(255,255,255,.08);padding:2px 6px;border-radius:6px}
+.badge{font-size:12px;padding:4px 8px;border-radius:999px;background:#0f172a;color:var(--muted);border:1px solid rgba(255,255,255,.08)}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{padding:10px;border-bottom:1px solid rgba(255,255,255,.08);text-align:left}
+.flex{display:flex;gap:12px;align-items:center}
+.justify{justify-content:space-between}
+.center{text-align:center}
+.hidden{display:none}
+```
+
+---
+
+## 🏠 index.html (Landing)
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>MLM Wallet App</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/auth.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="flex justify">
+        <div class="flex"><img src="assets/logo.svg" height="28" alt="logo"/><strong>MLM Wallet</strong></div>
+        <div>
+          <a class="btn" href="login.html">Login</a>
+          <a class="btn primary" href="signup.html">Sign up</a>
+        </div>
+      </div>
+      <h1>All-in-one Recharge & Wallet Platform</h1>
+      <p class="muted">Recharge • Bill Payment • AEPS • Money Transfer • Referral</p>
+      <div class="grid grid-4" style="margin-top:16px">
+        <a class="card" href="dashboard.html">Dashboard</a>
+        <a class="card" href="transactions.html">Transactions</a>
+        <a class="card" href="referral.html">Referral</a>
+        <a class="card" href="profile.html">Profile</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## 🔐 login.html
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Login</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/auth.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card" style="max-width:520px;margin:0 auto">
+      <h2>Login</h2>
+      <label class="label">Email</label>
+      <input class="input" id="email" type="email"/>
+      <label class="label">Password</label>
+      <input class="input" id="password" type="password"/>
+      <div class="flex justify" style="margin-top:12px">
+        <button class="btn primary" onclick="AppAuth.login()">Login</button>
+        <a href="#" onclick="AppAuth.reset()">Forgot password?</a>
+      </div>
+      <div id="msg" class="badge" style="margin-top:10px"></div>
+      <p>New here? <a href="signup.html">Create account</a></p>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## 📝 signup.html (captures ?ref=uid)
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Sign up</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/referrals.js"></script>
+  <script defer src="/js/auth.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card" style="max-width:520px;margin:0 auto">
+      <h2>Create account</h2>
+      <label class="label">Name</label>
+      <input class="input" id="name"/>
+      <label class="label">Email</label>
+      <input class="input" id="email" type="email"/>
+      <label class="label">Password</label>
+      <input class="input" id="password" type="password"/>
+      <button class="btn primary" onclick="AppAuth.signup()">Sign up</button>
+      <div id="msg" class="badge" style="margin-top:10px"></div>
+      <p>Have an account? <a href="login.html">Login</a></p>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## 📊 dashboard.html
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/guard.js"></script>
+  <script defer src="/js/ui.js"></script>
+  <script defer src="/js/wallet.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="flex justify">
+      <div class="flex"><img src="assets/logo.svg" height="24"><strong>Dashboard</strong></div>
+      <div class="flex">
+        <span id="roleBadge" class="badge">role</span>
+        <a class="btn" href="transactions.html">Ledger</a>
+        <a class="btn" href="profile.html">Profile</a>
+        <a class="btn" href="admin.html" id="adminLink" class="hidden">Admin</a>
+        <button class="btn" onclick="AppAuth.logout()">Logout</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex justify">
+        <div>
+          <div class="label">Wallet Balance</div>
+          <h2 id="balance">₹0.00</h2>
+        </div>
+        <div class="flex">
+          <button class="btn" onclick="Wallet.openTransfer()">Wallet ➜ Wallet</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-4" style="margin-top:16px">
+      <div class="card"><h3>Mobile Recharge</h3><button class="btn" onclick="UI.todo('Recharge API')">Open</button></div>
+      <div class="card"><h3>Bill Payment</h3><button class="btn" onclick="UI.todo('Bill API')">Open</button></div>
+      <div class="card"><h3>AEPS</h3><button class="btn" onclick="UI.todo('AEPS API')">Open</button></div>
+      <div class="card"><h3>Money Transfer</h3><button class="btn" onclick="UI.todo('DMR API')">Open</button></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Recent Transactions</h3>
+      <table class="table" id="txTable"><thead><tr><th>Time</th><th>Type</th><th>Amount</th><th>Note</th><th>By</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+
+  <div id="transferModal" class="card hidden" style="position:fixed;right:16px;bottom:16px;max-width:420px">
+    <h3>Transfer Wallet ➜ Wallet</h3>
+    <label class="label">Recipient UID</label>
+    <input class="input" id="toUid">
+    <label class="label">Amount (₹)</label>
+    <input class="input" id="amt">
+    <button class="btn primary" onclick="Wallet.transfer()">Send</button>
+    <button class="btn ghost" onclick="UI.closeModal('transferModal')">Close</button>
+    <div id="tmsg" class="badge" style="margin-top:8px"></div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## 👤 profile.html
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Profile</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/guard.js"></script>
+  <script defer src="/js/uploads.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card grid grid-2">
+      <div>
+        <h3>Profile</h3>
+        <div class="label">Display Name</div>
+        <input class="input" id="displayName">
+        <button class="btn" onclick="Uploads.saveName()">Save Name</button>
+
+        <div style="margin-top:12px">
+          <div class="label">Photo</div>
+          <input type="file" id="photoFile" accept="image/*"/>
+          <button class="btn" onclick="Uploads.uploadPhoto()">Upload</button>
+          <img id="photo" style="max-width:120px;margin-top:8px"/>
+        </div>
+
+        <div style="margin-top:12px">
+          <div class="label">QR Code</div>
+          <input type="file" id="qrFile" accept="image/*"/>
+          <button class="btn" onclick="Uploads.uploadQR()">Upload QR</button>
+          <img id="qr" style="max-width:120px;margin-top:8px"/>
+        </div>
+      </div>
+
+      <div>
+        <h3>Banner Creator</h3>
+        <canvas id="banner" width="640" height="240" class="card"></canvas>
+        <div class="grid grid-2">
+          <input class="input" id="bannerText" placeholder="Banner text">
+          <button class="btn" onclick="Uploads.saveBanner()">Save to Storage</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## 🧾 transactions.html (Ledger)
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Transactions</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/guard.js"></script>
+  <script defer src="/js/wallet.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h3>Your Ledger</h3>
+      <div class="grid grid-4">
+        <input class="input" id="filterType" placeholder="type: credit/debit/transfer">
+        <input class="input" id="filterBy" placeholder="by uid">
+        <input class="input" id="filterNote" placeholder="note contains">
+        <button class="btn" onclick="Wallet.loadLedger(true)">Filter</button>
+      </div>
+      <table class="table" id="ledger"><thead><tr><th>Time</th><th>Type</th><th>Amount</th><th>Note</th><th>By</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## 🌱 referral.html
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Referral</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/guard.js"></script>
+  <script defer src="/js/referrals.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h3>Referral</h3>
+      <p>Your referral link:</p>
+      <div class="card"><span id="refLink" class="kbd"></span></div>
+      <h4 style="margin-top:16px">Your Downline</h4>
+      <ul id="downline"></ul>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## ⚙️ js/firebase-init.js
+
+```javascript
+// Firebase v10+ modular SDK
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-functions.js";
+
+// YOUR CONFIG (as provided)
+const firebaseConfig = {
+  apiKey: "AIzaSyA9KS6E7oWd2aNumYPRkTpCvl_Sqb1TZtE",
+  authDomain: "mlm-network-157e8.firebaseapp.com",
+  projectId: "mlm-network-157e8",
+  storageBucket: "mlm-network-157e8.firebasestorage.app",
+  messagingSenderId: "433192039581",
+  appId: "1:433192039581:web:42d02b965870e4a8969074"
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+export const storage = getStorage(app);
+export const functions = getFunctions(app);
+export const call = (name)=> httpsCallable(getFunctions(app), name);
+
+// expose minimal global for pages that don't use modules directly
+window.AppFirebase = { auth, db, storage, functions, call };
+```
+
+---
+
+## 👮 js/guard.js (require auth + load claims)
+
+```javascript
+import { onAuthStateChanged, signOut, getIdTokenResult } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { auth } from './firebase-init.js';
+
+window.AppAuth = {
+  logout: ()=> signOut(auth)
+};
+
+onAuthStateChanged(auth, async (user)=>{
+  if(!user){ window.location.href = 'login.html'; return; }
+  const token = await getIdTokenResult(user, true);
+  const role = token.claims.role || 'retailer';
+  const roleBadge = document.getElementById('roleBadge');
+  if(roleBadge) roleBadge.textContent = role;
+  const adminLink = document.getElementById('adminLink');
+  if(adminLink) adminLink.style.display = (role === 'admin' || role === 'master') ? 'inline-flex' : 'none';
+  window.CurrentUser = { uid: user.uid, email: user.email, role };
+});
+```
+
+---
+
+## 🔑 js/auth.js
+
+```javascript
+import { auth, db } from './firebase-init.js';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, updateProfile } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { doc, setDoc, serverTimestamp, getDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+const byId = (id)=> document.getElementById(id);
+
+export const AppAuth = window.AppAuth || {};
+
+AppAuth.signup = async ()=>{
+  const name = byId('name').value.trim();
+  const email = byId('email').value.trim();
+  const password = byId('password').value;
+  const referrer = new URLSearchParams(location.search).get('ref') || null;
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  await updateProfile(cred.user, { displayName: name });
+  await setDoc(doc(db, 'users', cred.user.uid), {
+    uid: cred.user.uid,
+    name, email,
+    role: 'retailer',
+    balance: 0,
+    createdAt: serverTimestamp(),
+    referrer
+  });
+  if(referrer){
+    await setDoc(doc(db, 'referrals', cred.user.uid), { parent: referrer, createdAt: serverTimestamp() });
+  }
+  location.href = 'dashboard.html';
+};
+
+AppAuth.login = async ()=>{
+  const email = byId('email').value.trim();
+  const password = byId('password').value;
+  await signInWithEmailAndPassword(auth, email, password);
+  location.href = 'dashboard.html';
+};
+
+AppAuth.reset = async ()=>{
+  const email = byId('email').value.trim();
+  await sendPasswordResetEmail(auth, email);
+  byId('msg').textContent = 'Reset link sent to ' + email;
+};
+
+window.AppAuth = AppAuth;
+```
+
+---
+
+## 💼 js/wallet.js
+
+```javascript
+import { auth, db, call } from './firebase-init.js';
+import { doc, onSnapshot, collection, query, orderBy, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+const fmt = (n)=> '₹' + (Number(n||0)).toFixed(2);
+
+export const Wallet = {
+  init(){
+    auth.onAuthStateChanged(user=>{
+      if(!user) return;
+      onSnapshot(doc(db, 'users', user.uid), snap=>{
+        const data = snap.data();
+        document.getElementById('balance').textContent = fmt(data?.balance||0);
+      });
+      this.loadRecent();
+    });
+  },
+  openTransfer(){ document.getElementById('transferModal').classList.remove('hidden'); },
+  async transfer(){
+    const toUid = document.getElementById('toUid').value.trim();
+    const amt = Number(document.getElementById('amt').value);
+    const res = await call('transferWallet')({ toUid, amount: amt });
+    document.getElementById('tmsg').textContent = 'OK: ' + JSON.stringify(res.data);
+  },
+  async loadRecent(){
+    const tbody = document.querySelector('#txTable tbody'); if(!tbody) return;
+    tbody.innerHTML = '';
+    const q = query(collection(db, 'users', auth.currentUser.uid, 'ledger'), orderBy('ts','desc'));
+    onSnapshot(q, snaps=>{
+      tbody.innerHTML = '';
+      snaps.forEach(docu=>{
+        const t = docu.data();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${new Date(t.ts?.toDate?.()||t.ts).toLocaleString()}</td><td>${t.type}</td><td>${fmt(t.amount)}</td><td>${t.note||''}</td><td>${t.by||''}</td>`;
+        tbody.appendChild(tr);
+      });
+    });
+  },
+  async loadLedger(applyFilters){
+    const tbody = document.querySelector('#ledger tbody'); if(!tbody) return;
+    tbody.innerHTML = '';
+    let qRef = query(collection(db, 'users', auth.currentUser.uid, 'ledger'), orderBy('ts','desc'));
+    // basic client-side filters
+    const typeF = document.getElementById('filterType')?.value?.trim();
+    const byF = document.getElementById('filterBy')?.value?.trim();
+    const noteF = document.getElementById('filterNote')?.value?.trim()?.toLowerCase();
+    const snaps = await getDocs(qRef);
+    snaps.forEach(docu=>{
+      const t = docu.data();
+      if(applyFilters){
+        if(typeF && t.type!==typeF) return;
+        if(byF && t.by!==byF) return;
+        if(noteF && !(t.note||'').toLowerCase().includes(noteF)) return;
+      }
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${new Date(t.ts?.toDate?.()||t.ts).toLocaleString()}</td><td>${t.type}</td><td>${fmt(t.amount)}</td><td>${t.note||''}</td><td>${t.by||''}</td>`;
+      tbody.appendChild(tr);
+    });
+  }
+};
+
+window.Wallet = Wallet; Wallet.init();
+```
+
+---
+
+## 🧑‍💼 js/admin.js
+
+```javascript
+import { call, auth, db } from './firebase-init.js';
+import { collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+window.Admin = {
+  async credit(uid, amount, note){
+    const res = await call('adminAdjustBalance')({ uid, amount: Number(amount), note: note||'admin credit' });
+    alert('Done: '+JSON.stringify(res.data));
+  },
+  async debit(uid, amount, note){
+    const res = await call('adminAdjustBalance')({ uid, amount: -Math.abs(Number(amount)), note: note||'admin debit' });
+    alert('Done: '+JSON.stringify(res.data));
+  },
+  async setRole(uid, role){
+    const res = await call('setRole')({ uid, role });
+    alert('Role set: '+JSON.stringify(res.data));
+  },
+  async listUsers(){
+    const ul = document.getElementById('userList'); ul.innerHTML = '';
+    const snaps = await getDocs(query(collection(db,'users'), orderBy('createdAt','desc')));
+    snaps.forEach(d=>{
+      const u = d.data();
+      const li = document.createElement('li');
+      li.className = 'card';
+      li.innerHTML = `<strong>${u.name||u.email}</strong> <span class='badge'>${u.role}</span> <span class='kbd'>${u.uid}</span>`;
+      ul.appendChild(li);
+    });
+  }
+};
+```
+
+---
+
+## 🧭 js/ui.js
+
+```javascript
+window.UI = {
+  todo(name){ alert(name+" integration pending. Hook your API here."); },
+  closeModal(id){ document.getElementById(id).classList.add('hidden'); }
+};
+```
+
+---
+
+## 🔗 js/referrals.js
+
+```javascript
+import { auth, db } from './firebase-init.js';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+window.Ref = {
+  async initReferralPage(){
+    const user = auth.currentUser || await new Promise(r=> auth.onAuthStateChanged(r));
+    const link = `${location.origin}/signup.html?ref=${user.uid}`;
+    document.getElementById('refLink').textContent = link;
+    const q = query(collection(db,'users'), where('referrer','==', user.uid));
+    const snaps = await getDocs(q); const ul = document.getElementById('downline'); ul.innerHTML = '';
+    snaps.forEach(s=>{ const li=document.createElement('li'); li.textContent = (s.data().name||s.data().email)+` (uid:${s.id})`; ul.appendChild(li); });
+  }
+};
+
+if(document.getElementById('downline')) Ref.initReferralPage();
+```
+
+---
+
+## ⬆️ js/uploads.js
+
+```javascript
+import { auth, storage, db } from './firebase-init.js';
+import { ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-storage.js";
+import { doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+const byId = (id)=> document.getElementById(id);
+
+export const Uploads = {
+  async saveName(){
+    const user = auth.currentUser; if(!user) return;
+    await updateDoc(doc(db,'users',user.uid), { name: byId('displayName').value.trim() });
+    alert('Saved');
+  },
+  async uploadPhoto(){
+    const f = byId('photoFile').files[0]; if(!f) return;
+    const user = auth.currentUser; const r = ref(storage, `users/${user.uid}/photo`);
+    await uploadBytes(r, f); byId('photo').src = await getDownloadURL(r);
+  },
+  async uploadQR(){
+    const f = byId('qrFile').files[0]; if(!f) return;
+    const user = auth.currentUser; const r = ref(storage, `users/${user.uid}/qr`);
+    await uploadBytes(r, f); byId('qr').src = await getDownloadURL(r);
+  },
+  async saveBanner(){
+    const c = document.getElementById('banner'); const ctx = c.getContext('2d');
+    ctx.fillStyle = '#0b1220'; ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 36px Inter'; ctx.fillText(byId('bannerText').value||'Your Banner', 24, 120);
+    const blob = await new Promise(res=> c.toBlob(res,'image/png'));
+    const user = auth.currentUser; const r = ref(storage, `users/${user.uid}/banner.png`);
+    await uploadBytes(r, blob); alert('Banner saved');
+  }
+};
+
+window.Uploads = Uploads;
+```
+
+---
+
+## 🧰 admin.html
+
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Admin</title>
+  <link rel="stylesheet" href="css/styles.css"/>
+  <script defer src="/js/firebase-init.js"></script>
+  <script defer src="/js/guard.js"></script>
+  <script defer src="/js/admin.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <h3>Admin Panel</h3>
+      <div class="grid grid-3">
+        <input class="input" id="uid" placeholder="Target UID">
+        <input class="input" id="amount" placeholder="Amount (₹)">
+        <input class="input" id="note" placeholder="Note">
+      </div>
+      <div class="flex" style="margin-top:10px">
+        <button class="btn" onclick="Admin.credit(uid.value, amount.value, note.value)">Credit</button>
+        <button class="btn" onclick="Admin.debit(uid.value, amount.value, note.value)">Debit</button>
+      </div>
+
+      <div class="grid grid-3" style="margin-top:16px">
+        <input class="input" id="ru" placeholder="UID">
+        <select class="input" id="roleSel">
+          <option value="retailer">retailer</option>
+          <option value="distributor">distributor</option>
+          <option value="master">master</option>
+          <option value="admin">admin</option>
+        </select>
+        <button class="btn" onclick="Admin.setRole(ru.value, roleSel.value)">Set Role</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h3>Users</h3>
+      <button class="btn" onclick="Admin.listUsers()">Refresh</button>
+      <ul id="userList"></ul>
+    </div>
+  </div>
+</body>
+</html>
+```
+
+---
+
+## 🔥 Cloud Functions: functions/package.json
+
+```json
+{
+  "name": "mlm-wallet-functions",
+  "engines": { "node": "20" },
+  "dependencies": {
+    "firebase-admin": "^12.5.0",
+    "firebase-functions": "^6.0.0"
+  }
+}
+```
+
+---
+
+## 🔥 Cloud Functions: functions/index.js
+
+```javascript
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+const db = admin.firestore();
+
+const ALLOWLIST = new Set([
+  // put your admin uid here temporarily to bootstrap
+]);
+
+async function getRole(uid){
+  const token = await admin.auth().getUser(uid);
+  return token.customClaims?.role || 'retailer';
+}
+
+async function writeLedger(uid, entry){
+  await db.collection('users').doc(uid).collection('ledger').add(entry);
+}
+
+exports.setRole = functions.https.onCall(async (data, context)=>{
+  const caller = context.auth?.uid; if(!caller) throw new functions.https.HttpsError('unauthenticated','login');
+  const callerRole = await getRole(caller);
+  if(!(callerRole==='admin' || callerRole==='master' || ALLOWLIST.has(caller))) throw new functions.https.HttpsError('permission-denied','not allowed');
+  const { uid, role } = data;
+  await admin.auth().setCustomUserClaims(uid, { role });
+  await db.collection('users').doc(uid).update({ role });
+  return { ok:true, uid, role };
+});
+
+exports.adminAdjustBalance = functions.https.onCall(async (data, context)=>{
+  const caller = context.auth?.uid; if(!caller) throw new functions.https.HttpsError('unauthenticated','login');
+  const role = await getRole(caller);
+  if(!(role==='admin' || role==='master')) throw new functions.https.HttpsError('permission-denied','not allowed');
+  const { uid, amount, note } = data;
+  const ref = db.collection('users').doc(uid);
+  await db.runTransaction(async (tx)=>{
+    const snap = await tx.get(ref);
+    const bal = Number(snap.get('balance')||0) + Number(amount||0);
+    if(bal < 0) throw new functions.https.HttpsError('failed-precondition','insufficient funds');
+    tx.update(ref, { balance: bal });
+  });
+  const entry = { ts: admin.firestore.FieldValue.serverTimestamp(), type: amount>=0?'credit':'debit', amount: Math.abs(Number(amount)), note: note||'', by: caller };
+  await writeLedger(uid, entry);
+  return { ok:true };
+});
+
+exports.transferWallet = functions.https.onCall(async (data, context)=>{
+  const from = context.auth?.uid; if(!from) throw new functions.https.HttpsError('unauthenticated','login');
+  const { toUid, amount } = data; const amt = Number(amount||0);
+  if(!toUid || !amt || amt<=0) throw new functions.https.HttpsError('invalid-argument','amount>0');
+  const fromRef = db.collection('users').doc(from);
+  const toRef = db.collection('users').doc(toUid);
+  await db.runTransaction(async (tx)=>{
+    const A = await tx.get(fromRef); const B = await tx.get(toRef);
+    if(!B.exists) throw new functions.https.HttpsError('not-found','to user');
+    const balA = Number(A.get('balance')||0); if(balA < amt) throw new functions.https.HttpsError('failed-precondition','insufficient');
+    tx.update(fromRef, { balance: balA - amt });
+    const balB = Number(B.get('balance')||0) + amt; tx.update(toRef, { balance: balB });
+  });
+  const now = admin.firestore.FieldValue.serverTimestamp();
+  await writeLedger(from, { ts: now, type:'transfer', amount: amt, note:`to ${toUid}`, by: from });
+  await writeLedger(toUid, { ts: now, type:'transfer', amount: amt, note:`from ${from}`, by: from });
+  return { ok:true };
+});
+```
+
+---
+
+## 🔒 firestore.rules
+
+```rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn(){ return request.auth != null; }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || request.auth.token.role in ['admin','master']);
+      allow update: if signedIn() && request.auth.uid == uid && !('balance' in request.resource.data) && !('role' in request.resource.data);
+      allow create: if signedIn();
+
+      match /ledger/{doc} {
+        allow read: if signedIn() && (request.auth.uid == uid || request.auth.token.role in ['admin','master']);
+        allow write: if false; // only via Cloud Functions
+      }
+    }
+
+    match /referrals/{uid} {
+      allow read: if signedIn();
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
+```
+
+---
+
+## 🗃️ storage.rules
+
+```rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn(){ return request.auth != null; }
+    match /users/{uid}/{allPaths=**} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if signedIn() && request.auth.uid == uid;
+    }
+  }
+}
+```
+
+---
+
+## 🔎 firestore.indexes.json
+
+```json
+{
+  "indexes": [],
+  "fieldOverrides": []
+}
+```
+
+---
+
+## 📝 Notes
+- Hook your live Recharge/Bill/AEPS APIs inside `UI.todo()` buttons or create dedicated pages.
+- Referral tree depth >1 can be built by walking `referrals` parent links.
+- For GitHub Pages, ensure paths are relative (`./js/...`) or absolute from root.
+- To use ES modules on GitHub Pages, keep `<script type="module" src="...">` if you split files further. Here we use simple imports from same folder; if CORS issues, consider bundling or Firebase Hosting.
